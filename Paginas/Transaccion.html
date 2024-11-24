@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Realizar Depósito</title>
+    <link rel="stylesheet" href="/bootstrap/css/bootstrap.min.css">
+    <style>
+        footer {
+            background-color: #f8f9fa;
+            text-align: center;
+            padding: 20px 0;
+            margin-top: 40px;
+        }
+
+        #graficoTransacciones {
+            max-width: 600px;
+            margin: 20px auto;
+        }
+    </style>
+</head>
+
+<body onload="inicializarPagina()">
+
+    <!-- Header -->
+    <header>
+        <div class="container-fluid bg-light py-2">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="px-4">
+                    <button class="btn btn-primary" onclick="window.location.href='/Paginas/Principal.html'">Página Principal</button>
+                    <button class="btn btn-secondary" onclick="borrarDatosYIrInicio()">Página de Inicio</button>
+                    <button class="btn btn-success" onclick="generarComprobante()">Generar Comprobante</button>
+                </div>
+
+                <!-- Aquí mostramos el nombre del usuario y número de cuenta *****-->
+                <span class="h6" id="user-info">Nombre: Usuario | Cuenta: N/A</span>
+
+            </div>
+        </div>
+    </header>
+
+    <!-- Main content -->
+    <main class="container py-5">
+        <div class="row">
+            <div class="col-12">
+                <h2 class="text-primary fs-1 fw-bold mb-5 text-center">TRANSACCIONES</h2>
+            </div>
+        </div>
+
+        <!-- Botones para Depósito y Retiro -->
+        <div class="row text-center mb-5">
+            <div class="col-12 col-md-6">
+                <button class="btn btn-primary px-5 py-3" onclick="mostrarModal('depósito')">Realizar Depósito</button>
+            </div>
+            <div class="col-12 col-md-6">
+                <button class="btn btn-primary px-5 py-3" onclick="mostrarModal('retiro')">Realizar Retiro</button>
+            </div>
+        </div>
+
+        <!-- Tabla de transacciones -->
+        <div class="row">
+            <div class="col-12">
+                <table class="table table-bordered" id="tablaTransacciones">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Tipo</th>
+                            <th>Fecha</th>
+                            <th>Monto</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Se llena dinámicamente con JavaScript -->
+                    </tbody>
+                </table>
+                <div class="text-center mt-3">
+                    <h3 id="saldoActual">Saldo Actual: $500.00</h3>
+                </div>
+                <div id="graficoTransacciones">
+                    <canvas></canvas>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2024 Todos los derechos reservados.</p>
+    </footer>
+
+    <!-- Modal para depósito/retiro -->
+    <div class="modal fade" id="modalTransaccion" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalLabel">Realizar Transacción</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formularioTransaccion">
+                        <div class="mb-3">
+                            <label for="monto" class="form-label">Monto a <span id="tipoTransaccion"></span></label>
+                            <input type="number" class="form-control" id="monto" placeholder="Ingrese el monto">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="realizarTransaccion()">Realizar Transacción</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <script>
+        let saldo = 500;
+        let grafico; // Referencia global para el gráfico
+
+        function inicializarPagina() {
+            const transaccionesGuardadas = JSON.parse(localStorage.getItem('transacciones')) || [];
+            saldo = parseFloat(localStorage.getItem('saldo')) || 500;
+            document.getElementById('saldoActual').innerText = `Saldo Actual: $${saldo.toFixed(2)}`;
+            actualizarTabla(transaccionesGuardadas);
+            generarGrafico(transaccionesGuardadas);
+
+
+            // Obtener el nombre del usuario y el número de cuenta desde localStorage****
+            const userName = localStorage.getItem("userName") || "Usuario";
+            const accountNumber = localStorage.getItem("accountNumber") || "N/A";
+
+            // Actualizar el texto del encabezado con el nombre del usuario***
+            document.querySelector(
+                "header .h6"
+            ).innerText = `Nombre: ${userName} | Cuenta: ${accountNumber}`;
+        }
+
+        function actualizarTabla(transacciones) {
+            const cuerpoTabla = document.querySelector('#tablaTransacciones tbody');
+            cuerpoTabla.innerHTML = '';
+            transacciones.forEach(transaccion => {
+                const fila = document.createElement('tr');
+                fila.innerHTML = `
+                    <td>${transaccion.tipo}</td>
+                    <td>${transaccion.fecha}</td>
+                    <td>$${transaccion.monto.toFixed(2)}</td>
+                `;
+                cuerpoTabla.appendChild(fila);
+            });
+        }
+
+
+
+
+
+
+        function mostrarModal(tipo) {
+            document.getElementById('tipoTransaccion').innerText = tipo;
+            document.getElementById('monto').value = ''; // Limpia el campo del formulario
+            const modal = new bootstrap.Modal(document.getElementById('modalTransaccion'));
+            modal.show();
+        }
+
+        function realizarTransaccion() {
+            const tipo = document.getElementById('tipoTransaccion').innerText;
+            const monto = parseFloat(document.getElementById('monto').value);
+            if (isNaN(monto) || monto <= 0) {
+                alert('Por favor, ingrese un monto válido.');
+                return;
+            }
+            if (tipo === 'retiro' && monto > saldo) {
+                alert('No puede retirar más del saldo disponible.');
+                return;
+            }
+
+            const nuevaTransaccion = {
+                tipo: tipo.charAt(0).toUpperCase() + tipo.slice(1),
+                fecha: new Date().toISOString().split('T')[0],
+                monto: monto
+            };
+            const transacciones = JSON.parse(localStorage.getItem('transacciones')) || [];
+            transacciones.push(nuevaTransaccion);
+            localStorage.setItem('transacciones', JSON.stringify(transacciones));
+            saldo = tipo === 'retiro' ? saldo - monto : saldo + monto;
+            localStorage.setItem('saldo', saldo.toFixed(2));
+            document.getElementById('saldoActual').innerText = `Saldo Actual: $${saldo.toFixed(2)}`;
+            actualizarTabla(transacciones);
+            generarGrafico(transacciones);
+
+            // Limpia el campo del formulario y cierra el modal
+            document.getElementById('monto').value = '';
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalTransaccion'));
+            modal.hide();
+        }
+
+        function generarGrafico(transacciones) {
+            const depositos = transacciones.filter(t => t.tipo === 'Depósito').reduce((sum, t) => sum + t.monto, 0);
+            const retiros = transacciones.filter(t => t.tipo === 'Retiro').reduce((sum, t) => sum + t.monto, 0);
+
+            if (grafico) {
+                grafico.destroy();
+            }
+
+            const ctx = document.querySelector('#graficoTransacciones canvas').getContext('2d');
+            grafico = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Depósitos', 'Retiros'],
+                    datasets: [{
+                        label: 'Cantidad ($)',
+                        data: [depositos, retiros],
+                        backgroundColor: ['#4CAF50', '#F44336']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        }
+                    }
+                }
+            });
+        }
+
+        function borrarDatosYIrInicio() {
+            localStorage.removeItem('transacciones');
+            localStorage.removeItem('saldo');
+            window.location.href = '/index.html';
+        }
+
+        async function generarComprobante() {
+            const { jsPDF } = window.jspdf;
+
+            const doc = new jsPDF();
+            doc.setFontSize(16);
+            doc.text("Comprobante de Transacciones", 105, 20, null, null, "center");
+
+            const transacciones = JSON.parse(localStorage.getItem("transacciones")) || [];
+            const saldoActual = parseFloat(localStorage.getItem("saldo")) || 0;
+
+            const datosTabla = transacciones.map((transaccion) => [
+                transaccion.tipo,
+                transaccion.fecha,
+                `$${transaccion.monto.toFixed(2)}`
+            ]);
+
+            doc.autoTable({
+                head: [["Tipo", "Fecha", "Monto"]],
+                body: datosTabla,
+                startY: 30,
+                theme: "grid",
+                headStyles: { fillColor: [0, 123, 255] },
+            });
+
+            const finalY = doc.lastAutoTable.finalY || 30;
+            doc.setFontSize(14);
+            doc.text(`Saldo Actual: $${saldoActual.toFixed(2)}`, 105, finalY + 10, null, null, "center");
+
+            doc.save("Comprobante_Transacciones.pdf");
+        }
+    </script>
+</body>
+
+</html>
